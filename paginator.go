@@ -48,7 +48,7 @@ func fork(tx *gorm.DB) *gorm.DB {
 func (r *Paginator) generateCondition(typ CursorType, values map[string]interface{}, op Op) (string, []interface{}) {
 	s := "1=0"
 
-	args := make([]interface{}, 0)
+	args := make([]interface{}, 0, len(r.Columns)*2)
 
 	for i := len(r.Columns) - 1; i >= 0; i-- {
 		column := r.Columns[i]
@@ -75,12 +75,12 @@ func (r *Paginator) Paginate(c Cursor, tx *gorm.DB) (*Response, error) {
 	limit := c.Limit
 
 	otx := fork(tx)
-	columnNames := make([]string, 0)
-	for _, column := range r.Columns {
+	columnNames := make([]string, len(r.Columns))
+	for i, column := range r.Columns {
 		order := column.Order(c.Type)
 
 		otx = otx.Order(fmt.Sprintf("%v %v", column.Name, order))
-		columnNames = append(columnNames, column.Name)
+		columnNames[i] = column.Name
 	}
 
 	tx.Logger.Info(tx.Statement.Context, "columns: %v", columnNames)
@@ -153,8 +153,9 @@ func (r *Paginator) Paginate(c Cursor, tx *gorm.DB) (*Response, error) {
 	var sc, ec string
 	var cursors []string
 	if len(nvalues) > 0 {
-		for _, v := range nvalues {
-			cursors = append(cursors, r.cursorString(v))
+		cursors = make([]string, len(nvalues))
+		for i, v := range nvalues {
+			cursors[i] = r.cursorString(v)
 		}
 
 		mi := len(nvalues) - 1

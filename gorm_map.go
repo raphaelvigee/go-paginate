@@ -52,7 +52,7 @@ func rowMap(rows *sql.Rows) (map[string]interface{}, error) {
 
 	columns := make([]interface{}, len(cols))
 	columnPointers := make([]interface{}, len(cols))
-	for i, _ := range columns {
+	for i := range columns {
 		columnPointers[i] = &columns[i]
 	}
 

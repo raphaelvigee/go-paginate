@@ -45,9 +45,9 @@ func (r *Paginator) Cursor(encoded string, typ CursorType, limit int) (Cursor, e
 }
 
 func (r *Paginator) cursorString(v map[string]interface{}) string {
-	valuesArr := make([]interface{}, 0)
-	for _, column := range r.Columns {
-		valuesArr = append(valuesArr, v[column.Name])
+	valuesArr := make([]interface{}, len(r.Columns))
+	for i, column := range r.Columns {
+		valuesArr[i] = v[column.Name]
 	}
 
 	data, err := msgpack.Marshal(valuesArr)
