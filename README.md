@@ -16,6 +16,7 @@ package main
 import (
     "fmt"
     paginator "github.com/raphaelvigee/go-paginate"
+    uuid "github.com/satori/go.uuid"
     "gorm.io/driver/sqlite"
     "gorm.io/gorm"
     "time"
@@ -31,45 +32,87 @@ func main() {
     // Errors omitted for brevity
 
     // Open the DB
-    db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{NowFunc: func() time.Time { return time.Now().Local() }})
+    db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{NowFunc: func() time.Time { return time.Now().Local() }})
+    if err != nil {
+        panic(err)
+    }
     db.AutoMigrate(&User{})
+
+    // Add some data
+    base := time.Unix(0, 0).UTC()
+
+    db.Create(&User{
+        Name:      "u1",
+        Id:        uuid.NewV4().String(),
+        CreatedAt: base.Add(4 * time.Hour),
+    })
+
+    db.Create(&User{
+        Name:      "u2",
+        Id:        uuid.NewV4().String(),
+        CreatedAt: base.Add(10 * time.Hour),
+    })
+
+    db.Create(&User{
+        Name:      "u3",
+        Id:        uuid.NewV4().String(),
+        CreatedAt: base.Add(1 * time.Hour),
+    })
+
+    db.Create(&User{
+        Name:      "u4",
+        Id:        uuid.NewV4().String(),
+        CreatedAt: base.Add(6 * time.Hour),
+    })
 
     // Define the pagination criterias
     pg := paginator.New(&paginator.Paginator{
         Columns: []*paginator.Column{
             {
-                Name:        "created_at",
+                Name: "created_at",
                 // For SQLite the placeholder must be wrapped with `datetime()`
-                Placeholder: func (*paginator.Column) string {
+                Placeholder: func(*paginator.Column) string {
                     return "datetime(?)"
                 },
                 // For SQLite the column name must be wrapped with `datetime()`
-                Reference:   func (c *paginator.Column) string {
+                Reference: func(c *paginator.Column) string {
                     return fmt.Sprintf("datetime(%v)", c.Name)
                 },
             },
         },
     })
-    
-    // the cursor string must be empty for the first request
-    c, _ := pg.Cursor("get the cursor from the request", paginator.CursorAfter, 2)
+
+    // This would typically come from the request
+    cursorString := "" // must be empty for the first request
+    cursorType := paginator.CursorAfter
+    cursorLimit := 2
+
+    c, err := pg.Cursor(cursorString, cursorType, cursorLimit)
+    if err != nil {
+        panic(err)
+    }
 
     // Create a transaction
     tx := db.Model(&User{})
-    res, _ := pg.Paginate(c, tx)
+    res, err := pg.Paginate(c, tx)
+    if err != nil {
+        panic(err)
+    }
 
-    println(res.PageInfo.HasPreviousPage)
-    println(res.PageInfo.HasNextPage)
-    println(res.PageInfo.StartCursor)
-    println(res.PageInfo.EndCursor)
+    fmt.Println(res.PageInfo.HasPreviousPage)
+    fmt.Println(res.PageInfo.HasNextPage)
+    fmt.Println(res.PageInfo.StartCursor)
+    fmt.Println(res.PageInfo.EndCursor)
 
     var users []User
     // Retrieve the results for the provided cursor/limit
-    // res.tx is nil when no results are available
+    // res.Tx is nil when no results are available
     if res.Tx != nil {
         if err := res.Tx.Find(&users).Error; err != nil {
-            // Do something with the error
+            panic(err)
         }
     }
+
+    fmt.Println(len(users)) // Should print 2
 }
 ```
