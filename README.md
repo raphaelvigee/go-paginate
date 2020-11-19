@@ -1,6 +1,6 @@
 # go-paginate
 
-An efficient go data paginator.
+An efficient go data cursor-based paginator.
 For now only supports [gorm](https://gorm.io), support for any data source to be added later™️, PRs welcome.
 
 - Supports multiple columns with multiple orderings
@@ -106,8 +106,8 @@ func main() {
     fmt.Println(res.PageInfo.StartCursor)
     fmt.Println(res.PageInfo.EndCursor)
 
-    var users []User
     // Retrieve the results for the provided cursor/limit
+    var users []User
     // res.Tx is nil when no results are available
     if res.Tx != nil {
         if err := res.Tx.Find(&users).Error; err != nil {
@@ -123,3 +123,7 @@ func main() {
 
 - Support different datasources (not only gorm)
 - Custom cursors encode/decode
+
+# Release
+
+    TAG=v1.0.0 make tag
