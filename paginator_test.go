@@ -120,11 +120,7 @@ func testPaginator(t *testing.T, columns []*Column, typ CursorType, limit int, s
 			assert.Equal(t, n, users[i].Name)
 		}
 
-		if ec := res.PageInfo.EndCursor; ec != nil {
-			nextCursor = *ec
-		} else {
-			nextCursor = ""
-		}
+		nextCursor = res.PageInfo.EndCursor
 	}
 }
 
@@ -156,8 +152,8 @@ func TestFactory_Empty(t *testing.T) {
 
 	assert.False(t, res.PageInfo.HasPreviousPage)
 	assert.False(t, res.PageInfo.HasNextPage)
-	assert.Nil(t, res.PageInfo.StartCursor)
-	assert.Nil(t, res.PageInfo.EndCursor)
+	assert.Empty(t, res.PageInfo.StartCursor)
+	assert.Empty(t, res.PageInfo.EndCursor)
 
 	assert.Nil(t, res.Tx)
 }

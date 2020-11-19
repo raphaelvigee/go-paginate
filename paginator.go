@@ -6,10 +6,10 @@ import (
 )
 
 type PageInfo struct {
-	HasNextPage     bool    `json:"hasNextPage"`
-	HasPreviousPage bool    `json:"hasPreviousPage"`
-	StartCursor     *string `json:"startCursor"`
-	EndCursor       *string `json:"endCursor"`
+	HasNextPage     bool   `json:"hasNextPage"`
+	HasPreviousPage bool   `json:"hasPreviousPage"`
+	StartCursor     string `json:"startCursor"`
+	EndCursor       string `json:"endCursor"`
 }
 
 type Response struct {
@@ -105,8 +105,8 @@ func (r *Paginator) Paginate(c Cursor, tx *gorm.DB) (*Response, error) {
 				PageInfo: PageInfo{
 					HasNextPage:     false,
 					HasPreviousPage: false,
-					StartCursor:     nil,
-					EndCursor:       nil,
+					StartCursor:     "",
+					EndCursor:       "",
 				},
 			}, nil
 		}
@@ -150,7 +150,7 @@ func (r *Paginator) Paginate(c Cursor, tx *gorm.DB) (*Response, error) {
 	tx.Logger.Info(tx.Statement.Context, "hasNextPage: %v", hasNextPage)
 
 	var rtx *gorm.DB
-	var sc, ec *string
+	var sc, ec string
 	var cursors []string
 	if len(nvalues) > 0 {
 		for _, v := range nvalues {
@@ -165,11 +165,11 @@ func (r *Paginator) Paginate(c Cursor, tx *gorm.DB) (*Response, error) {
 			ei = mi
 		}
 
-		sc = &cursors[si]
-		ec = &cursors[ei]
+		sc = cursors[si]
+		ec = cursors[ei]
 
-		tx.Logger.Info(tx.Statement.Context, "sc: %v", *sc)
-		tx.Logger.Info(tx.Statement.Context, "ec: %v", *ec)
+		tx.Logger.Info(tx.Statement.Context, "sc: %v", sc)
+		tx.Logger.Info(tx.Statement.Context, "ec: %v", ec)
 
 		sm := nvalues[si]
 		em := nvalues[ei]

@@ -101,8 +101,6 @@ func main() {
 
     fmt.Println(res.PageInfo.HasPreviousPage)
     fmt.Println(res.PageInfo.HasNextPage)
-
-    // Watch out, these are pointers!
     fmt.Println(res.PageInfo.StartCursor)
     fmt.Println(res.PageInfo.EndCursor)
 
