@@ -124,4 +124,4 @@ func main() {
 
 # Release
 
-    TAG=v1.0.0 make tag
+    TAG=v0.0.1 make tag
