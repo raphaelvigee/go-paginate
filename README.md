@@ -1,4 +1,6 @@
 # go-paginate
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/raphaelvigee/go-paginate)](https://pkg.go.dev/github.com/raphaelvigee/go-paginate)
+![Test](https://github.com/raphaelvigee/go-paginate/workflows/Test/badge.svg)
 
 An efficient go data cursor-based paginator.
 For now only supports [gorm](https://gorm.io), support for any data source to be added later™️, PRs welcome.
