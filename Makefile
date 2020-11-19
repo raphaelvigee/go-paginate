@@ -1,3 +1,3 @@
 tag:
-	git tag ${TAG}
+	git tag -a ${TAG} -m ${TAG}
 	git push origin ${TAG}
