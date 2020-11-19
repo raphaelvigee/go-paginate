@@ -1,4 +1,4 @@
-module go-paginate
+module github.com/raphaelvigee/go-paginate
 
 go 1.14
 
