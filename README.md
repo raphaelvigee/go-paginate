@@ -8,7 +8,7 @@ An efficient go data cursor-based paginator.
 - Easy to use
 - Efficient
 
-**Note**: Do **NOT** use the `v1.*.*` as they are bad pushes, stick to `v.0.*.*`
+**Note**: Do **NOT** use the `v1.*.*` as they are bad pushes, stick to `v0.*.*`
 
 ## Drivers
 
