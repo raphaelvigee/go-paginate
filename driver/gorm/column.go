@@ -21,7 +21,9 @@ func (o Order) Invert() Order {
 }
 
 type Column struct {
+	// Column name
 	Name string
+	// ASC when false, DESC when true
 	Desc bool
 	// Prints column name in the SQL statement, default to the column name
 	Reference func(column *Column) string

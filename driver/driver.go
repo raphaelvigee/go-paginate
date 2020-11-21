@@ -3,6 +3,7 @@ package driver
 import "github.com/raphaelvigee/go-paginate/cursor"
 
 type Driver interface {
+	// Runs when the paginator is created
 	Init()
 
 	// Used to convert data from the driver layer to the cursor layer

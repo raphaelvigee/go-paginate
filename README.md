@@ -8,123 +8,84 @@ An efficient go data cursor-based paginator.
 - Easy to use
 - Efficient
 
+## Why?
+
+A lot of articles on the internet summarize very well the benefits of cursor-based pagination, but here are the highlights:
+
+- It scales: Unlike `OFFSET`/`LIMIT`-based pagination doesn't scale well for large datasets
+- Suitable for real-time data: having a fixed point in the flow of data prevents duplicates/missing entries
+
+It does have an issue, it is hard to implement, that's why `go-paginate` exists :)
+
 ## Drivers
 
 - [gorm](https://gorm.io):
-    - Supports multiple columns with multiple orderings directions
+    - Supports multiple columns with different orderings directions (ex: `ORDER BY id ASC, name DESC`)
 
-- Missing driver? Make a PR!
+- Can't find what you are looking for? [Open an issue!](https://github.com/raphaelvigee/go-paginate/issues/new)
 
 ## Usage
 
+### With `gorm`
+
+> Errors omitted for brevity
+
+Create the paginator, defining the criteria (columns and ordering):
+
 ```go
-package main
-
-import (
-    "fmt"
-    paginator "github.com/raphaelvigee/go-paginate"
-    "github.com/raphaelvigee/go-paginate/cursor"
-    "github.com/raphaelvigee/go-paginate/driver/gorm"
-    uuid "github.com/satori/go.uuid"
-    "gorm.io/driver/sqlite"
-    gormdb "gorm.io/gorm"
-    "time"
-)
-
-type User struct {
-    Id        string `gorm:"primarykey"`
-    Name      string
-    CreatedAt time.Time `gorm:"index"`
-}
-
-func main() {
-    // Errors omitted for brevity
-
-    // Open the DB
-    db, err := gormdb.Open(sqlite.Open("file::memory:?cache=shared"), &gormdb.Config{NowFunc: func() time.Time { return time.Now().Local() }})
-    if err != nil {
-        panic(err)
-    }
-    db.AutoMigrate(&User{})
-
-    // Add some data
-    base := time.Unix(0, 0).UTC()
-
-    db.Create(&User{
-        Name:      "u1",
-        Id:        uuid.NewV4().String(),
-        CreatedAt: base.Add(4 * time.Hour),
-    })
-
-    db.Create(&User{
-        Name:      "u2",
-        Id:        uuid.NewV4().String(),
-        CreatedAt: base.Add(10 * time.Hour),
-    })
-
-    db.Create(&User{
-        Name:      "u3",
-        Id:        uuid.NewV4().String(),
-        CreatedAt: base.Add(1 * time.Hour),
-    })
-
-    db.Create(&User{
-        Name:      "u4",
-        Id:        uuid.NewV4().String(),
-        CreatedAt: base.Add(6 * time.Hour),
-    })
-
-    // Define the pagination criteria
-    pg := paginator.New(paginator.Options{
-        Driver: gorm.Driver{
-            Columns: []*gorm.Column{
-                {
-                    Name: "created_at",
-                    // For SQLite the placeholder must be wrapped with `datetime()`
-                    Placeholder: func(*gorm.Column) string {
-                        return "datetime(?)"
-                    },
-                    // For SQLite the column name must be wrapped with `datetime()`
-                    Reference: func(c *gorm.Column) string {
-                        return fmt.Sprintf("datetime(%v)", c.Name)
-                    },
-                },
+pg := paginator.New(paginator.Options{
+    Driver: gorm.Driver{
+        Columns: []*gorm.Column{
+            {
+                Name: "created_at",
             },
         },
-    })
-
-    // This would typically come from the request
-    cursorString := "" // must be empty for the first request
-    cursorType := cursor.After
-    cursorLimit := 2
-
-    c, err := pg.Cursor(cursorString, cursorType, cursorLimit)
-    if err != nil {
-        panic(err)
-    }
-
-    // Create a transaction
-    tx := db.Model(&User{})
-    res, err := pg.Paginate(c, tx)
-    if err != nil {
-        panic(err)
-    }
-
-    fmt.Println(res.PageInfo.HasPreviousPage)
-    fmt.Println(res.PageInfo.HasNextPage)
-    fmt.Println(res.PageInfo.StartCursor)
-    fmt.Println(res.PageInfo.EndCursor)
-
-    // Retrieve the results for the provided cursor/limit
-    var users []User
-    if err := res.Query(&users); err != nil {
-        panic(err)
-    }
-
-    fmt.Println(len(users)) // Should print 2
-}
+    },
+})
 ```
 
-# Release
+Create the cursor instance, most likely from the request (in the initial request, the cursor is an empty string):
+
+```go
+c, err := pg.Cursor("<cursor from client>", cursor.After, 2)
+```
+
+Create a transaction with appropriate filtering etc and request the pagination info:
+
+```go
+tx := db.Model(&User{}).Where(...)
+res, err := pg.Paginate(c, tx)
+
+// That should be sent back to the client along with the data
+fmt.Println(res.PageInfo.HasPreviousPage)
+fmt.Println(res.PageInfo.HasNextPage)
+fmt.Println(res.PageInfo.StartCursor)
+fmt.Println(res.PageInfo.EndCursor)
+```
+
+Request the underlying data:
+
+```go
+var users []User
+err := res.Query(&users)
+
+fmt.Println(len(users)) // 2
+```
+
+A full working example can be found in [example/gorm](./example/gorm/main.go).
+
+### Custom cursor
+
+By default, the cursor will be marshalled through `msgpack` for size concerns, and `base64` for portability.
+One can choose to do differently (for example encrypting them...), see the implementation of `cursor.MsgPack` and `cursor.Base64`.
+
+```go
+pg := paginator.New(paginator.Options{
+    Driver: ...,
+    CursorMarshaller: cursor.Chain(cursor.MsgPack(), cursor.Base64(base64.StdEncoding))
+})
+```
+
+## Release
 
     TAG=v0.0.1 make tag
