@@ -74,7 +74,7 @@ func main() {
         CreatedAt: base.Add(6 * time.Hour),
     })
 
-    // Define the pagination criterias
+    // Define the pagination criteria
     pg := paginator.New(paginator.Options{
         Driver: gorm.Driver{
             Columns: []*gorm.Column{

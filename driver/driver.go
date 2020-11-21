@@ -19,7 +19,7 @@ type Driver interface {
 
 type Executor interface {
 	Query(dst interface{}) error
-	Count() (uint64, error)
+	Count() (int64, error)
 }
 
 type PageInfo struct {

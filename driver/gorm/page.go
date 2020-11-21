@@ -25,7 +25,7 @@ func (g gormDriverPage) Query(dst interface{}) error {
 	return g.tx.Find(dst).Error
 }
 
-func (g gormDriverPage) Count() (uint64, error) {
+func (g gormDriverPage) Count() (int64, error) {
 	if g.tx == nil {
 		return 0, nil
 	}
@@ -33,7 +33,7 @@ func (g gormDriverPage) Count() (uint64, error) {
 	var c int64
 	err := g.tx.Count(&c).Error
 
-	return uint64(c), err
+	return c, err
 }
 
 func (g gormDriverPage) Info() driver.PageInfo {

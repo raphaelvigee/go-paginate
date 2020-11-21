@@ -120,6 +120,10 @@ func testPaginator(t *testing.T, columns []*Column, typ cursor.Type, limit int, 
 		ec, _ := res.Cursor(int64(limit-1))
 		assert.Equal(t, ec, res.PageInfo.EndCursor)
 
+		c, err := res.Count()
+		assert.NoError(t, err)
+		assert.Equal(t, int64(len(s.names)), c)
+
 		var users []User
 		err = res.Query(&users)
 		assert.NoError(t, err)
@@ -153,16 +157,20 @@ func TestFactory_Empty(t *testing.T) {
 		Driver: Driver{Columns: simpleColumns},
 	})
 
-	c, err := pg.Cursor("", cursor.After, 2)
+	csr, err := pg.Cursor("", cursor.After, 2)
 	assert.NoError(t, err)
 
-	res, err := pg.Paginate(c, tx)
+	res, err := pg.Paginate(csr, tx)
 	assert.NoError(t, err)
 
 	assert.False(t, res.PageInfo.HasPreviousPage)
 	assert.False(t, res.PageInfo.HasNextPage)
 	assert.Empty(t, res.PageInfo.StartCursor)
 	assert.Empty(t, res.PageInfo.EndCursor)
+
+	c, err := res.Count()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), c)
 
 	var users []User
 	err = res.Query(&users)
