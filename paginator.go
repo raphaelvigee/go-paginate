@@ -1,6 +1,7 @@
 package go_paginate
 
 import (
+	"encoding/base64"
 	"github.com/raphaelvigee/go-paginate/cursor"
 	"github.com/raphaelvigee/go-paginate/driver"
 )
@@ -26,15 +27,15 @@ func (p Page) Cursor(i int64) (string, error) {
 type Options struct {
 	driver.Driver
 
-	// Will default to cursor.MsgPackBase64EncoderDecoder
-	CursorEncoderDecoder cursor.EncoderDecoder
+	// Will default to cursor.Chain(cursor.MsgPack(), cursor.Base64(base64.StdEncoding))
+	CursorMarshaller cursor.Marshaller
 }
 
 func New(o Options) *Paginator {
 	p := &Paginator{Options: o}
 
-	if p.CursorEncoderDecoder == nil {
-		p.CursorEncoderDecoder = cursor.MsgPackBase64EncoderDecoder()
+	if p.CursorMarshaller == nil {
+		p.CursorMarshaller = cursor.Chain(cursor.MsgPack(), cursor.Base64(base64.StdEncoding))
 	}
 
 	p.Driver.Init()
@@ -47,7 +48,7 @@ type Paginator struct {
 }
 
 func (p *Paginator) Cursor(encoded string, typ cursor.Type, limit int) (cursor.Cursor, error) {
-	data, err := p.CursorEncoderDecoder.Decode(encoded)
+	data, err := p.CursorMarshaller.Unmarshal([]byte(encoded))
 	if err != nil {
 		return cursor.Cursor{}, err
 	}
@@ -72,12 +73,12 @@ func (p *Paginator) Paginate(c cursor.Cursor, input interface{}) (Page, error) {
 
 	info := dp.Info()
 
-	sc, err := p.CursorEncoderDecoder.Encode(info.StartCursor)
+	sc, err := p.CursorMarshaller.Marshal(info.StartCursor)
 	if err != nil {
 		return Page{}, err
 	}
 
-	ec, err := p.CursorEncoderDecoder.Encode(info.EndCursor)
+	ec, err := p.CursorMarshaller.Marshal(info.EndCursor)
 	if err != nil {
 		return Page{}, err
 	}
@@ -87,8 +88,8 @@ func (p *Paginator) Paginate(c cursor.Cursor, input interface{}) (Page, error) {
 		PageInfo: PageInfo{
 			HasNextPage:     info.HasNextPage,
 			HasPreviousPage: info.HasPreviousPage,
-			StartCursor:     sc,
-			EndCursor:       ec,
+			StartCursor:     string(sc),
+			EndCursor:       string(ec),
 		},
 		cursorFunc: func(i int64) (string, error) {
 			rc, err := dp.Cursor(i)
@@ -96,7 +97,12 @@ func (p *Paginator) Paginate(c cursor.Cursor, input interface{}) (Page, error) {
 				return "", err
 			}
 
-			return p.CursorEncoderDecoder.Encode(rc)
+			m, err := p.CursorMarshaller.Marshal(rc)
+			if err != nil {
+				return "", err
+			}
+
+			return string(m), nil
 		},
 	}, nil
 }

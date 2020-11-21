@@ -1,6 +1,7 @@
 package cursor
 
 import (
+	"bytes"
 	"encoding/base64"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -18,48 +19,126 @@ type Cursor struct {
 	Value interface{}
 }
 
-type EncoderDecoder interface {
+type Marshaller interface {
 	// When input is nil, must return an empty string
-	Encode(input interface{}) (string, error)
+	Marshal(input interface{}) ([]byte, error)
 
 	// When encoded is an empty string, return value must be nil
-	Decode(encoded string) (interface{}, error)
+	Unmarshal(encoded []byte) (interface{}, error)
 }
 
-func MsgPackBase64EncoderDecoder() EncoderDecoder {
-	return msgpackBase64{}
+type Encoder interface {
+	// When input is nil, must return an empty string
+	Encode(input []byte) ([]byte, error)
+
+	// When encoded is an empty string, return value must be nil
+	Decode(encoded []byte) ([]byte, error)
 }
 
-type msgpackBase64 struct {
+type chain struct {
+	m  Marshaller
+	es []Encoder
 }
 
-func (m msgpackBase64) Encode(input interface{}) (string, error) {
-	if input == nil {
-		return "", nil
-	}
-
-	data, err := msgpack.Marshal(input)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.StdEncoding.EncodeToString(data), nil
-}
-
-func (m msgpackBase64) Decode(encoded string) (interface{}, error) {
-	if len(encoded) == 0 {
-		return nil, nil
-	}
-
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
+func (c chain) Marshal(input interface{}) ([]byte, error) {
+	var err error
+	s, err := c.m.Marshal(input)
 	if err != nil {
 		return nil, err
 	}
 
+	for _, e := range c.es {
+		s, err = e.Encode(s)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return s, nil
+}
+
+func (c chain) Unmarshal(encoded []byte) (interface{}, error) {
+	s := encoded
+
+	var err error
+	for i := len(c.es) - 1; i >= 0; i-- {
+		s, err = c.es[i].Decode(s)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return c.m.Unmarshal(s)
+}
+
+func Chain(m Marshaller, es ...Encoder) Marshaller {
+	return chain{m: m, es: es}
+}
+
+func MsgPack() Marshaller {
+	return mpack{}
+}
+
+type mpack struct{}
+
+func (m mpack) Marshal(input interface{}) ([]byte, error) {
+	if input == nil {
+		return nil, nil
+	}
+
+	s, err := msgpack.Marshal(input)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func (m mpack) Unmarshal(s []byte) (interface{}, error) {
+	if len(s) == 0 {
+		return nil, nil
+	}
+
 	var data interface{}
-	if err = msgpack.Unmarshal(decoded, &data); err != nil {
+	if err := msgpack.Unmarshal(s, &data); err != nil {
 		return nil, err
 	}
 
 	return data, nil
+}
+
+func Base64(encoding *base64.Encoding) Encoder {
+	return b64{encoding}
+}
+
+type b64 struct {
+	*base64.Encoding
+}
+
+func (b b64) Encode(input []byte) ([]byte, error) {
+	if len(input) == 0 {
+		return nil, nil
+	}
+
+	encoded := make([]byte, b.Encoding.EncodedLen(len(input)))
+	b.Encoding.Encode(encoded, input)
+	return encoded, nil
+}
+
+func (b b64) Decode(input []byte) ([]byte, error) {
+	if len(input) == 0 {
+		return nil, nil
+	}
+
+	decoded := make([]byte, b.Encoding.DecodedLen(len(input)))
+	_, err := b.Encoding.Decode(decoded, input)
+	if err != nil {
+		return nil, err
+	}
+
+	decoded = bytes.TrimRightFunc(decoded, func(r rune) bool {
+		return r == 0
+	})
+
+	return decoded, nil
 }
