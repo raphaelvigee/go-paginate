@@ -27,6 +27,12 @@ func SetupDb(models ...interface{}) (*gormdb.DB, context.CancelFunc) {
 		panic(fmt.Sprintf("Failed to connect to db: %v", err))
 	}
 
+	sqlDB, err := db.DB()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to get db: %v", err))
+	}
+	sqlDB.SetMaxOpenConns(1)
+
 	db.AutoMigrate(models...)
 
 	ctx, cancel := context.WithCancel(context.Background())
