@@ -1,4 +1,6 @@
-package go_paginate
+package gorm
+
+import "github.com/raphaelvigee/go-paginate/cursor"
 
 type Order string
 
@@ -15,7 +17,7 @@ func (o Order) Invert() Order {
 		return OrderAsc
 	}
 
-	panic("invalid order")
+	panic("invalid order: " + string(o))
 }
 
 type Column struct {
@@ -27,13 +29,13 @@ type Column struct {
 	Placeholder func(column *Column) string
 }
 
-func (c Column) Order(t CursorType) Order {
+func (c Column) Order(t cursor.Type) Order {
 	order := OrderAsc
 	if c.Desc {
 		order = OrderDesc
 	}
 
-	if t == CursorBefore {
+	if t == cursor.Before {
 		order = order.Invert()
 	}
 

@@ -1,12 +1,16 @@
-package go_paginate
+package gorm
 
 import (
 	"context"
 	"fmt"
+	"github.com/raphaelvigee/go-paginate"
+	"github.com/raphaelvigee/go-paginate/cursor"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+	gormdb "gorm.io/gorm"
+	"os"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -17,8 +21,8 @@ type User struct {
 	CreatedAt time.Time `gorm:"index"`
 }
 
-func SetupDb(models ...interface{}) (*gorm.DB, context.CancelFunc) {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{NowFunc: func() time.Time { return time.Now().Local() }})
+func SetupDb(models ...interface{}) (*gormdb.DB, context.CancelFunc) {
+	db, err := gormdb.Open(sqlite.Open("file::memory:?cache=shared"), &gormdb.Config{NowFunc: func() time.Time { return time.Now().Local() }})
 	if err != nil {
 		panic(fmt.Sprintf("Failed to connect to db: %v", err))
 	}
@@ -30,7 +34,7 @@ func SetupDb(models ...interface{}) (*gorm.DB, context.CancelFunc) {
 	return db.WithContext(ctx), cancel
 }
 
-func setup() (*gorm.DB, context.CancelFunc) {
+func setup() (*gormdb.DB, context.CancelFunc) {
 	db, teardown := SetupDb(&User{})
 
 	db.Unscoped().Where("1=1").Delete(&User{})
@@ -61,7 +65,9 @@ func setup() (*gorm.DB, context.CancelFunc) {
 		CreatedAt: base.Add(6 * time.Hour),
 	})
 
-	db = db.Debug()
+	if ok, _ := strconv.ParseBool(os.Getenv("DEBUG")); ok {
+		db = db.Debug()
+	}
 
 	return db, teardown
 }
@@ -74,9 +80,9 @@ func columnName(c *Column) string {
 	return fmt.Sprintf("datetime(%v)", c.Name)
 }
 
-func printAll(tx *gorm.DB) {
+func printAll(tx *gormdb.DB) {
 	var values []string
-	tx.Session(&gorm.Session{}).Order("`created_at` asc").Pluck("created_at", &values)
+	tx.Session(&gormdb.Session{}).Order("`created_at` asc").Pluck("created_at", &values)
 	tx.Logger.Info(tx.Statement.Context, "initial: %v", values)
 }
 
@@ -86,7 +92,7 @@ type spec struct {
 	names           []string
 }
 
-func testPaginator(t *testing.T, columns []*Column, typ CursorType, limit int, specs []spec) {
+func testPaginator(t *testing.T, columns []*Column, typ cursor.Type, limit int, specs []spec) {
 	db, teardown := setup()
 	defer teardown()
 
@@ -94,25 +100,28 @@ func testPaginator(t *testing.T, columns []*Column, typ CursorType, limit int, s
 
 	printAll(tx)
 
-	pg := New(&Paginator{
-		Columns: columns,
+	pg := go_paginate.New(go_paginate.Options{
+		Driver: Driver{Columns: columns},
 	})
 
 	nextCursor := ""
 	for _, s := range specs {
-		cursor, err := pg.Cursor(nextCursor, typ, limit)
+		csr, err := pg.Cursor(nextCursor, typ, limit)
 		assert.NoError(t, err)
 
-		res, err := pg.Paginate(cursor, tx)
+		res, err := pg.Paginate(csr, tx)
 		assert.NoError(t, err)
 
 		assert.Equal(t, s.hasPreviousPage, res.PageInfo.HasPreviousPage)
 		assert.Equal(t, s.hasNextPage, res.PageInfo.HasNextPage)
 
-		assert.NotNil(t, res.Tx)
+		sc, _ := res.Cursor(0)
+		assert.Equal(t, sc, res.PageInfo.StartCursor)
+		ec, _ := res.Cursor(int64(limit-1))
+		assert.Equal(t, ec, res.PageInfo.EndCursor)
 
 		var users []User
-		err = res.Tx.Find(&users).Error
+		err = res.Query(&users)
 		assert.NoError(t, err)
 
 		assert.Len(t, users, len(s.names))
@@ -140,11 +149,11 @@ func TestFactory_Empty(t *testing.T) {
 
 	tx := db.Model(&User{})
 
-	pg := New(&Paginator{
-		Columns: simpleColumns,
+	pg := go_paginate.New(go_paginate.Options{
+		Driver: Driver{Columns: simpleColumns},
 	})
 
-	c, err := pg.Cursor("", CursorAfter, 2)
+	c, err := pg.Cursor("", cursor.After, 2)
 	assert.NoError(t, err)
 
 	res, err := pg.Paginate(c, tx)
@@ -155,11 +164,15 @@ func TestFactory_Empty(t *testing.T) {
 	assert.Empty(t, res.PageInfo.StartCursor)
 	assert.Empty(t, res.PageInfo.EndCursor)
 
-	assert.Nil(t, res.Tx)
+	var users []User
+	err = res.Query(&users)
+	assert.NoError(t, err)
+
+	assert.Len(t, users, 0)
 }
 
 func TestFactory_After_Simple(t *testing.T) {
-	testPaginator(t, simpleColumns, CursorAfter, 2, []spec{
+	testPaginator(t, simpleColumns, cursor.After, 2, []spec{
 		{
 			hasPreviousPage: false,
 			hasNextPage:     true,
@@ -174,7 +187,7 @@ func TestFactory_After_Simple(t *testing.T) {
 }
 
 func TestFactory_Before_Simple(t *testing.T) {
-	testPaginator(t, simpleColumns, CursorBefore, 2, []spec{
+	testPaginator(t, simpleColumns, cursor.Before, 2, []spec{
 		{
 			hasPreviousPage: false,
 			hasNextPage:     true,
@@ -201,7 +214,7 @@ var compositeColumns = []*Column{
 }
 
 func TestFactory_After_Composite(t *testing.T) {
-	testPaginator(t, compositeColumns, CursorAfter, 2, []spec{
+	testPaginator(t, compositeColumns, cursor.After, 2, []spec{
 		{
 			hasPreviousPage: false,
 			hasNextPage:     true,
@@ -216,7 +229,7 @@ func TestFactory_After_Composite(t *testing.T) {
 }
 
 func TestFactory_Before_Composite(t *testing.T) {
-	testPaginator(t, compositeColumns, CursorBefore, 2, []spec{
+	testPaginator(t, compositeColumns, cursor.Before, 2, []spec{
 		{
 			hasPreviousPage: false,
 			hasNextPage:     true,

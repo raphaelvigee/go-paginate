@@ -1,4 +1,4 @@
-package go_paginate
+package gorm
 
 import (
 	"fmt"
@@ -46,5 +46,5 @@ func (o Op) Opposite() Op {
 		return OpGt
 	}
 
-	panic("invalid op")
+	panic("invalid op: " + string(o))
 }

@@ -1,4 +1,4 @@
-package go_paginate
+package gorm
 
 import (
 	"database/sql"

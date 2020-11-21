@@ -3,12 +3,17 @@
 ![Test](https://github.com/raphaelvigee/go-paginate/workflows/Test/badge.svg)
 
 An efficient go data cursor-based paginator.
-For now only supports [gorm](https://gorm.io), support for any data source to be added later™️, PRs welcome.
 
-- Supports multiple columns with multiple orderings
 - Plug and play
 - Easy to use
 - Efficient
+
+## Drivers
+
+- [gorm](https://gorm.io):
+    - Supports multiple columns with multiple orderings directions
+
+- Missing driver? Make a PR!
 
 ## Usage
 
@@ -18,9 +23,11 @@ package main
 import (
     "fmt"
     paginator "github.com/raphaelvigee/go-paginate"
+    "github.com/raphaelvigee/go-paginate/cursor"
+    "github.com/raphaelvigee/go-paginate/driver/gorm"
     uuid "github.com/satori/go.uuid"
     "gorm.io/driver/sqlite"
-    "gorm.io/gorm"
+    gormdb "gorm.io/gorm"
     "time"
 )
 
@@ -34,7 +41,7 @@ func main() {
     // Errors omitted for brevity
 
     // Open the DB
-    db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{NowFunc: func() time.Time { return time.Now().Local() }})
+    db, err := gormdb.Open(sqlite.Open("file::memory:?cache=shared"), &gormdb.Config{NowFunc: func() time.Time { return time.Now().Local() }})
     if err != nil {
         panic(err)
     }
@@ -68,17 +75,19 @@ func main() {
     })
 
     // Define the pagination criterias
-    pg := paginator.New(&paginator.Paginator{
-        Columns: []*paginator.Column{
-            {
-                Name: "created_at",
-                // For SQLite the placeholder must be wrapped with `datetime()`
-                Placeholder: func(*paginator.Column) string {
-                    return "datetime(?)"
-                },
-                // For SQLite the column name must be wrapped with `datetime()`
-                Reference: func(c *paginator.Column) string {
-                    return fmt.Sprintf("datetime(%v)", c.Name)
+    pg := paginator.New(paginator.Options{
+        Driver: gorm.Driver{
+            Columns: []*gorm.Column{
+                {
+                    Name: "created_at",
+                    // For SQLite the placeholder must be wrapped with `datetime()`
+                    Placeholder: func(*gorm.Column) string {
+                        return "datetime(?)"
+                    },
+                    // For SQLite the column name must be wrapped with `datetime()`
+                    Reference: func(c *gorm.Column) string {
+                        return fmt.Sprintf("datetime(%v)", c.Name)
+                    },
                 },
             },
         },
@@ -86,7 +95,7 @@ func main() {
 
     // This would typically come from the request
     cursorString := "" // must be empty for the first request
-    cursorType := paginator.CursorAfter
+    cursorType := cursor.After
     cursorLimit := 2
 
     c, err := pg.Cursor(cursorString, cursorType, cursorLimit)
@@ -108,21 +117,13 @@ func main() {
 
     // Retrieve the results for the provided cursor/limit
     var users []User
-    // res.Tx is nil when no results are available
-    if res.Tx != nil {
-        if err := res.Tx.Find(&users).Error; err != nil {
-            panic(err)
-        }
+    if err := res.Query(&users); err != nil {
+        panic(err)
     }
 
     fmt.Println(len(users)) // Should print 2
 }
 ```
-
-## Roadmap
-
-- Support different datasources (not only gorm)
-- Custom cursors encode/decode
 
 # Release
 
