@@ -55,15 +55,15 @@ func main() {
 	// Define the pagination criteria
 	pg := paginator.New(paginator.Options{
 		Driver: gorm.Driver{
-			Columns: []*gorm.Column{
+			Columns: []gorm.Column{
 				{
 					Name: "created_at",
 					// For SQLite the placeholder must be wrapped with `datetime()`
-					Placeholder: func(*gorm.Column) string {
+					Placeholder: func(gorm.Column) string {
 						return "datetime(?)"
 					},
 					// For SQLite the column name must be wrapped with `datetime()`
-					Reference: func(c *gorm.Column) string {
+					Reference: func(c gorm.Column) string {
 						return fmt.Sprintf("datetime(%v)", c.Name)
 					},
 				},

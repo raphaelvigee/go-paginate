@@ -78,11 +78,11 @@ func setup() (*gormdb.DB, context.CancelFunc) {
 	return db, teardown
 }
 
-func placeholderValue(*Column) string {
+func placeholderValue(Column) string {
 	return "datetime(?)"
 }
 
-func columnName(c *Column) string {
+func columnName(c Column) string {
 	return fmt.Sprintf("datetime(%v)", c.Name)
 }
 
@@ -98,7 +98,7 @@ type spec struct {
 	names           []string
 }
 
-func testPaginator(t *testing.T, columns []*Column, typ cursor.Type, limit int, specs []spec) {
+func testPaginator(t *testing.T, columns []Column, typ cursor.Type, limit int, specs []spec) {
 	db, teardown := setup()
 	defer teardown()
 
@@ -123,7 +123,7 @@ func testPaginator(t *testing.T, columns []*Column, typ cursor.Type, limit int, 
 
 		sc, _ := res.Cursor(0)
 		assert.Equal(t, sc, res.PageInfo.StartCursor)
-		ec, _ := res.Cursor(int64(limit-1))
+		ec, _ := res.Cursor(int64(limit - 1))
 		assert.Equal(t, ec, res.PageInfo.EndCursor)
 
 		c, err := res.Count()
@@ -143,7 +143,7 @@ func testPaginator(t *testing.T, columns []*Column, typ cursor.Type, limit int, 
 	}
 }
 
-var simpleColumns = []*Column{
+var simpleColumns = []Column{
 	{
 		Name:        "created_at",
 		Placeholder: placeholderValue,
@@ -215,7 +215,7 @@ func TestFactory_Before_Simple(t *testing.T) {
 	})
 }
 
-var compositeColumns = []*Column{
+var compositeColumns = []Column{
 	{
 		Name:        "created_at",
 		Desc:        true,

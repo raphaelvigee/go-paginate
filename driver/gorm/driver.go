@@ -10,7 +10,7 @@ import (
 )
 
 type Driver struct {
-	Columns []*Column
+	Columns []Column
 }
 
 var _ driver.Driver = (*Driver)(nil)
@@ -52,15 +52,15 @@ func (d Driver) CursorDecode(input interface{}) (interface{}, error) {
 }
 
 func (d Driver) Init() {
-	for _, c := range d.Columns {
-		if c.Reference == nil {
-			c.Reference = func(column *Column) string {
+	for i := 0; i < len(d.Columns); i++ {
+		if d.Columns[i].Reference == nil {
+			d.Columns[i].Reference = func(column Column) string {
 				return column.Name
 			}
 		}
 
-		if c.Placeholder == nil {
-			c.Placeholder = func(*Column) string {
+		if d.Columns[i].Placeholder == nil {
+			d.Columns[i].Placeholder = func(Column) string {
 				return "?"
 			}
 		}
@@ -212,7 +212,7 @@ func (d Driver) Paginate(c cursor.Cursor, input interface{}) (driver.Page, error
 	}
 
 	return &gormDriverPage{
-		tx:      rtx,
+		tx: rtx,
 		cursorFunc: func(i int64) (interface{}, error) {
 			return d.CursorEncode(nvalues[i])
 		},

@@ -35,7 +35,7 @@ Create the paginator, defining the criteria (columns and ordering):
 ```go
 pg := paginator.New(paginator.Options{
     Driver: gorm.Driver{
-        Columns: []*gorm.Column{
+        Columns: []gorm.Column{
             {
                 Name: "created_at",
             },
