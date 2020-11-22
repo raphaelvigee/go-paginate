@@ -8,6 +8,10 @@ An efficient go data cursor-based paginator.
 - Easy to use
 - Efficient
 
+```
+go get github.com/raphaelvigee/go-paginate
+```
+
 ## Why?
 
 A lot of articles on the internet summarize very well the benefits of cursor-based pagination, but here are the highlights:
@@ -72,7 +76,7 @@ err := res.Query(&users)
 fmt.Println(len(users)) // 2
 ```
 
-A full working example can be found in [example/gorm](./example/gorm/main.go).
+A full working example can be found in [_example/gorm](_example/gorm/main.go).
 
 ### Custom cursor
 
