@@ -1,7 +1,6 @@
 package cursor
 
 import (
-	"bytes"
 	"encoding/base64"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -131,14 +130,12 @@ func (b b64) Decode(input []byte) ([]byte, error) {
 	}
 
 	decoded := make([]byte, b.Encoding.DecodedLen(len(input)))
-	_, err := b.Encoding.Decode(decoded, input)
+	n, err := b.Encoding.Decode(decoded, input)
 	if err != nil {
 		return nil, err
 	}
 
-	decoded = bytes.TrimRightFunc(decoded, func(r rune) bool {
-		return r == 0
-	})
+	decoded = decoded[:n]
 
 	return decoded, nil
 }
