@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/raphaelvigee/go-paginate"
 	"github.com/raphaelvigee/go-paginate/cursor"
+	"github.com/raphaelvigee/go-paginate/driver/sqlbase"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
@@ -45,30 +46,30 @@ func setup() (*gormdb.DB, context.CancelFunc) {
 
 	db.Unscoped().Where("1=1").Delete(&User{})
 
-	base := time.Unix(0, 0).UTC()
+	baseTime := time.Unix(0, 0).UTC()
 
 	db.Create(&User{
 		Name:      "u1",
 		Id:        uuid.NewV4().String(),
-		CreatedAt: base.Add(4 * time.Hour),
+		CreatedAt: baseTime.Add(4 * time.Hour),
 	})
 
 	db.Create(&User{
 		Name:      "u2",
 		Id:        uuid.NewV4().String(),
-		CreatedAt: base.Add(10 * time.Hour),
+		CreatedAt: baseTime.Add(10 * time.Hour),
 	})
 
 	db.Create(&User{
 		Name:      "u3",
 		Id:        uuid.NewV4().String(),
-		CreatedAt: base.Add(1 * time.Hour),
+		CreatedAt: baseTime.Add(1 * time.Hour),
 	})
 
 	db.Create(&User{
 		Name:      "u4",
 		Id:        uuid.NewV4().String(),
-		CreatedAt: base.Add(6 * time.Hour),
+		CreatedAt: baseTime.Add(6 * time.Hour),
 	})
 
 	if ok, _ := strconv.ParseBool(os.Getenv("DEBUG")); ok {
@@ -78,11 +79,11 @@ func setup() (*gormdb.DB, context.CancelFunc) {
 	return db, teardown
 }
 
-func placeholderValue(Column) string {
+func placeholderValue(column sqlbase.Column) string {
 	return "datetime(?)"
 }
 
-func columnName(c Column) string {
+func columnName(c sqlbase.Column) string {
 	return fmt.Sprintf("datetime(%v)", c.Name)
 }
 
@@ -98,7 +99,7 @@ type spec struct {
 	names           []string
 }
 
-func testPaginator(t *testing.T, columns []Column, typ cursor.Type, limit int, specs []spec) {
+func testPaginator(t *testing.T, columns []sqlbase.Column, typ cursor.Type, limit int, specs []spec) {
 	db, teardown := setup()
 	defer teardown()
 
@@ -107,11 +108,14 @@ func testPaginator(t *testing.T, columns []Column, typ cursor.Type, limit int, s
 	printAll(tx)
 
 	pg := go_paginate.New(go_paginate.Options{
-		Driver: Driver{Columns: columns},
+		Driver: New(Options{
+			Columns: columns,
+		}),
 	})
 
 	nextCursor := ""
-	for _, s := range specs {
+	for i, s := range specs {
+		t.Logf("Spec %v\n", i)
 		csr, err := pg.Cursor(nextCursor, typ, limit)
 		assert.NoError(t, err)
 
@@ -143,7 +147,7 @@ func testPaginator(t *testing.T, columns []Column, typ cursor.Type, limit int, s
 	}
 }
 
-var simpleColumns = []Column{
+var simpleColumns = []sqlbase.Column{
 	{
 		Name:        "created_at",
 		Placeholder: placeholderValue,
@@ -160,7 +164,9 @@ func TestFactory_Empty(t *testing.T) {
 	tx := db.Model(&User{})
 
 	pg := go_paginate.New(go_paginate.Options{
-		Driver: Driver{Columns: simpleColumns},
+		Driver: New(Options{
+			Columns: simpleColumns,
+		}),
 	})
 
 	csr, err := pg.Cursor("", cursor.After, 2)
@@ -215,7 +221,7 @@ func TestFactory_Before_Simple(t *testing.T) {
 	})
 }
 
-var compositeColumns = []Column{
+var compositeColumns = []sqlbase.Column{
 	{
 		Name:        "created_at",
 		Desc:        true,

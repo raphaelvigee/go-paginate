@@ -1,24 +1,8 @@
-package gorm
+package sqlbase
 
-import "github.com/raphaelvigee/go-paginate/cursor"
-
-type Order string
-
-const (
-	OrderAsc  Order = "asc"
-	OrderDesc Order = "desc"
+import (
+	"github.com/raphaelvigee/go-paginate/cursor"
 )
-
-func (o Order) Invert() Order {
-	switch o {
-	case OrderAsc:
-		return OrderDesc
-	case OrderDesc:
-		return OrderAsc
-	}
-
-	panic("invalid order: " + string(o))
-}
 
 type Column struct {
 	// Column name

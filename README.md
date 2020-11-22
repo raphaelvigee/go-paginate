@@ -38,13 +38,13 @@ Create the paginator, defining the criteria (columns and ordering):
 
 ```go
 pg := paginator.New(paginator.Options{
-    Driver: gorm.Driver{
+    Driver: gorm.New(gorm.Options{
         Columns: []gorm.Column{
             {
                 Name: "created_at",
             },
         },
-    },
+    }),
 })
 ```
 
@@ -76,7 +76,7 @@ err := res.Query(&users)
 fmt.Println(len(users)) // 2
 ```
 
-A full working example can be found in [_example/gorm](_example/gorm/main.go).
+A full working example can be found in [_examples/gorm](_examples/gorm/main.go).
 
 ### Custom cursor
 
@@ -85,7 +85,7 @@ One can choose to do differently (for example encrypting them...), see the imple
 
 ```go
 pg := paginator.New(paginator.Options{
-    Driver: ...,
+    ...
     CursorMarshaller: cursor.Chain(cursor.MsgPack(), cursor.Base64(base64.StdEncoding))
 })
 ```

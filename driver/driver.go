@@ -24,8 +24,8 @@ type Executor interface {
 }
 
 type PageInfo struct {
-	HasNextPage     bool
 	HasPreviousPage bool
+	HasNextPage     bool
 	StartCursor     interface{}
 	EndCursor       interface{}
 }

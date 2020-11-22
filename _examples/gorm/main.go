@@ -26,35 +26,35 @@ func main() {
 	db.AutoMigrate(&User{})
 
 	// Add some data
-	base := time.Unix(0, 0).UTC()
+	baseTime := time.Unix(0, 0).UTC()
 
 	db.Create(&User{
 		Name:      "u1",
 		Id:        uuid.NewV4().String(),
-		CreatedAt: base.Add(4 * time.Hour),
+		CreatedAt: baseTime.Add(4 * time.Hour),
 	})
 
 	db.Create(&User{
 		Name:      "u2",
 		Id:        uuid.NewV4().String(),
-		CreatedAt: base.Add(10 * time.Hour),
+		CreatedAt: baseTime.Add(10 * time.Hour),
 	})
 
 	db.Create(&User{
 		Name:      "u3",
 		Id:        uuid.NewV4().String(),
-		CreatedAt: base.Add(1 * time.Hour),
+		CreatedAt: baseTime.Add(1 * time.Hour),
 	})
 
 	db.Create(&User{
 		Name:      "u4",
 		Id:        uuid.NewV4().String(),
-		CreatedAt: base.Add(6 * time.Hour),
+		CreatedAt: baseTime.Add(6 * time.Hour),
 	})
 
 	// Define the pagination criteria
 	pg := paginator.New(paginator.Options{
-		Driver: gorm.Driver{
+		Driver: gorm.New(gorm.Options{
 			Columns: []gorm.Column{
 				{
 					Name: "created_at",
@@ -68,7 +68,7 @@ func main() {
 					},
 				},
 			},
-		},
+		}),
 	})
 
 	// This would typically come from the request
