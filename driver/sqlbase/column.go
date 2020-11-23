@@ -22,7 +22,7 @@ func (c Column) Order(t cursor.Type) Order {
 	}
 
 	if t == cursor.Before {
-		order = order.Invert()
+		return order.Invert()
 	}
 
 	return order

@@ -50,13 +50,13 @@ func specs(t *testing.T) []spec {
 			},
 		},
 		{
-			input: []string{"1", "2", "3"},
+			input: []interface{}{"1", 2, 3.0},
 			check: func(i interface{}) {
 				ia := i.([]interface{})
 				assert.Len(t, ia, 3)
 				assert.Equal(t, "1", ia[0])
-				assert.Equal(t, "2", ia[1])
-				assert.Equal(t, "3", ia[2])
+				assert.Equal(t, int8(2), ia[1])
+				assert.Equal(t, 3.0, ia[2])
 			},
 		},
 	}

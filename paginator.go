@@ -38,8 +38,6 @@ func New(o Options) *Paginator {
 		p.CursorMarshaller = cursor.Chain(cursor.MsgPack(), cursor.Base64(base64.StdEncoding))
 	}
 
-	p.Driver.Init()
-
 	return p
 }
 

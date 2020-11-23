@@ -3,6 +3,7 @@ package gorm
 import (
 	"fmt"
 	"github.com/raphaelvigee/go-paginate/driver"
+	"github.com/raphaelvigee/go-paginate/driver/base"
 	"github.com/raphaelvigee/go-paginate/driver/sqlbase"
 	"gorm.io/gorm"
 )
@@ -14,29 +15,27 @@ type Options struct {
 }
 
 func New(o Options) driver.Driver {
-	return gormDriver{
-		Driver: sqlbase.Driver{
-			Columns: o.Columns,
-			ExecutorFactory: func(args sqlbase.ExecutorFactoryArgs) sqlbase.Executor {
-				otx := fork(args.Input.(*gorm.DB))
-				columnNames := make([]string, len(o.Columns))
+	return sqlbase.New(sqlbase.Options{
+		Columns: o.Columns,
+		ExecutorFactory: func(args sqlbase.ExecutorFactoryArgs) sqlbase.Executor {
+			otx := fork(args.Input.(*gorm.DB))
+			columnNames := make([]string, len(o.Columns))
 
-				for i, column := range o.Columns {
-					order := column.Order(args.Cursor.Type)
+			for i, column := range o.Columns {
+				order := column.Order(args.Cursor.Type)
 
-					otx = otx.Order(fmt.Sprintf("%v %v", column.Name, order))
-					columnNames[i] = column.Name
-				}
+				otx = otx.Order(fmt.Sprintf("%v %v", column.Name, order))
+				columnNames[i] = column.Name
+			}
 
-				stx := fork(otx).Select(columnNames)
+			stx := fork(otx).Select(columnNames)
 
-				return gormExecutor{
-					otx: otx,
-					stx: stx,
-				}
-			},
+			return gormExecutor{
+				otx: otx,
+				stx: stx,
+			}
 		},
-	}
+	})
 }
 
 type gormExecutor struct {
@@ -47,7 +46,16 @@ type gormExecutor struct {
 }
 
 func (d gormExecutor) TakeFirst() (map[string]interface{}, error) {
-	return TakeMap(fork(d.stx).Limit(1))
+	m, err := TakeMap(fork(d.stx).Limit(1))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(m) == 0 {
+		return nil, base.ErrNoResult
+	}
+
+	return m, nil
 }
 
 func (d gormExecutor) CountPrevious(where string, args []interface{}) (int64, error) {
@@ -91,9 +99,3 @@ func (p pageExecutor) Count() (int64, error) {
 func fork(tx *gorm.DB) *gorm.DB {
 	return tx.Session(&gorm.Session{})
 }
-
-type gormDriver struct {
-	sqlbase.Driver
-}
-
-var _ driver.Driver = (*gormDriver)(nil)
