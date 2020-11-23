@@ -6,7 +6,7 @@ An efficient go data cursor-based paginator.
 
 - Plug and play
 - Easy to use
-- Efficient
+- Fully customizable
 
 ```
 go get github.com/raphaelvigee/go-paginate
