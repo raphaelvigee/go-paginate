@@ -26,7 +26,9 @@ It does have an issue, it is hard to implement, that's why `go-paginate` exists 
 - [gorm](https://gorm.io):
     - Supports multiple columns with different orderings directions (ex: `ORDER BY id ASC, name DESC`)
 
-- Can't find what you are looking for? [Open an issue!](https://github.com/raphaelvigee/go-paginate/issues/new)
+- Implement your own: See [driver.Driver](driver/driver.go) and [base.Driver](driver/base/driver.go)
+
+> Can't find what you are looking for? [Open an issue!](https://github.com/raphaelvigee/go-paginate/issues/new)
 
 ## Usage
 
@@ -58,22 +60,20 @@ Create a transaction with appropriate filtering etc and request the pagination i
 
 ```go
 tx := db.Model(&User{}).Where(...)
-res, err := pg.Paginate(c, tx)
+page, err := pg.Paginate(c, tx)
 
 // That should be sent back to the client along with the data
-fmt.Println(res.PageInfo.HasPreviousPage)
-fmt.Println(res.PageInfo.HasNextPage)
-fmt.Println(res.PageInfo.StartCursor)
-fmt.Println(res.PageInfo.EndCursor)
+fmt.Println(page.PageInfo.HasPreviousPage)
+fmt.Println(page.PageInfo.HasNextPage)
+fmt.Println(page.PageInfo.StartCursor)
+fmt.Println(page.PageInfo.EndCursor)
 ```
 
-Request the underlying data:
+Retrieve the underlying data for the page:
 
 ```go
 var users []User
-err := res.Query(&users)
-
-fmt.Println(len(users)) // 2
+err := page.Query(&users)
 ```
 
 A full working example can be found in [_examples/gorm](_examples/gorm/main.go).

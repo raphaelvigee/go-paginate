@@ -83,19 +83,19 @@ func main() {
 
 	// Create a transaction
 	tx := db.Model(&User{})
-	res, err := pg.Paginate(c, tx)
+	page, err := pg.Paginate(c, tx)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(res.PageInfo.HasPreviousPage)
-	fmt.Println(res.PageInfo.HasNextPage)
-	fmt.Println(res.PageInfo.StartCursor)
-	fmt.Println(res.PageInfo.EndCursor)
+	fmt.Println(page.PageInfo.HasPreviousPage)
+	fmt.Println(page.PageInfo.HasNextPage)
+	fmt.Println(page.PageInfo.StartCursor)
+	fmt.Println(page.PageInfo.EndCursor)
 
-	// Retrieve the results for the provided cursor/limit
+	// Retrieve the results for the current page
 	var users []User
-	if err := res.Query(&users); err != nil {
+	if err := page.Query(&users); err != nil {
 		panic(err)
 	}
 
