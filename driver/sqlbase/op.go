@@ -1,19 +1,31 @@
 package sqlbase
 
-import (
-	"fmt"
-	"strings"
-)
-
 type Op string
 
 const (
-	OpGt Op = ">"
-	OpLt Op = "<"
+	OpGt  Op = ">"
+	OpGte    = ">="
+	OpLt     = "<"
+	OpLte    = "<="
 )
 
+var inclusive = map[Op]Op{
+	OpLt: OpLte,
+	OpGt: OpGte,
+}
+
+var exclusive = map[Op]Op{
+	OpLte: OpLt,
+	OpGte: OpGt,
+}
+
 func (o Op) IsInclusive() bool {
-	return strings.HasSuffix(string(o), "=")
+	switch o {
+	case OpLte, OpGte:
+		return true
+	}
+
+	return false
 }
 
 func (o Op) Inclusive() Op {
@@ -21,29 +33,27 @@ func (o Op) Inclusive() Op {
 		return o
 	}
 
-	return Op(fmt.Sprintf("%v=", o))
+	return inclusive[o]
 }
 
 func (o Op) Exclusive() Op {
-	if o.IsInclusive() {
-		return Op(o[0])
+	if !o.IsInclusive() {
+		return o
 	}
 
-	return o
+	return exclusive[o]
 }
 
 func (o Op) Opposite() Op {
-	switch o.Exclusive() {
-	case OpGt:
-		if o.IsInclusive() {
-			return OpLt.Inclusive()
-		}
-		return OpLt
+	switch o {
 	case OpLt:
-		if o.IsInclusive() {
-			return OpGt.Inclusive()
-		}
 		return OpGt
+	case OpLte:
+		return OpGte
+	case OpGt:
+		return OpLt
+	case OpGte:
+		return OpLte
 	}
 
 	panic("invalid op: " + string(o))

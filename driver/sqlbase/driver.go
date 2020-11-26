@@ -150,12 +150,9 @@ func (e sqlExecutor) GenerateCondition(typ cursor.Type, values map[string]interf
 	s := "@@@previous@@@"
 	origS := s
 
-	columns := e.columns
-
-	args := make([]interface{}, 0, len(columns)*2)
-
-	for i := len(columns) - 1; i >= 0; i-- {
-		column := columns[i]
+	args := make([]interface{}, len(e.columns)*2)
+	for i := len(e.columns) - 1; i >= 0; i-- {
+		column := e.columns[i]
 
 		cop := op
 		if column.Order(typ) == OrderDesc {
@@ -170,7 +167,7 @@ func (e sqlExecutor) GenerateCondition(typ cursor.Type, values map[string]interf
 		// col op ? AND (col op ? OR (previous))
 		s = fmt.Sprintf("(%v %v %v AND (%v %v %v OR (%s)))", c, cop.Inclusive(), vp, c, cop, vp, s)
 
-		args = append([]interface{}{v, v}, args...)
+		copy(args[i*2:], []interface{}{v, v})
 	}
 
 	s = strings.Replace(s, fmt.Sprintf(" OR (%v)", origS), "", 1) // Remove the useless root previous
