@@ -23,7 +23,7 @@ type User struct {
 }
 
 func SetupDb(models ...interface{}) (*gormdb.DB, context.CancelFunc) {
-	db, err := gormdb.Open(sqlite.Open("file::memory:?cache=shared"), &gormdb.Config{NowFunc: func() time.Time { return time.Now().Local() }})
+	db, err := gormdb.Open(sqlite.Open("file::memory:?cache=shared"), &gormdb.Config{NowFunc: time.Now().Local})
 	if err != nil {
 		panic(fmt.Sprintf("Failed to connect to db: %v", err))
 	}

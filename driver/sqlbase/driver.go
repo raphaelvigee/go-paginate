@@ -169,10 +169,11 @@ func (e sqlExecutor) GenerateCondition(typ cursor.Type, values map[string]interf
 		// https://stackoverflow.com/a/38017813
 		// col op ? AND (col op ? OR (previous))
 		s = fmt.Sprintf("(%v %v %v AND (%v %v %v OR (%s)))", c, cop.Inclusive(), vp, c, cop, vp, s)
-		s = strings.Replace(s, fmt.Sprintf(" OR (%v)", origS), "", 1) // Remove the useless root previous
 
 		args = append([]interface{}{v, v}, args...)
 	}
+
+	s = strings.Replace(s, fmt.Sprintf(" OR (%v)", origS), "", 1) // Remove the useless root previous
 
 	return s, args
 }

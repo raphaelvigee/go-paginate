@@ -19,7 +19,7 @@ type User struct {
 
 func main() {
 	// Open the DB
-	db, err := gormdb.Open(sqlite.Open("file::memory:?cache=shared"), &gormdb.Config{NowFunc: func() time.Time { return time.Now().Local() }})
+	db, err := gormdb.Open(sqlite.Open("file::memory:?cache=shared"), &gormdb.Config{NowFunc: time.Now().Local})
 	if err != nil {
 		panic(err)
 	}
