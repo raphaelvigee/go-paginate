@@ -14,11 +14,6 @@ var inclusive = map[Op]Op{
 	OpGt: OpGte,
 }
 
-var exclusive = map[Op]Op{
-	OpLte: OpLt,
-	OpGte: OpGt,
-}
-
 func (o Op) IsInclusive() bool {
 	switch o {
 	case OpLte, OpGte:
@@ -34,14 +29,6 @@ func (o Op) Inclusive() Op {
 	}
 
 	return inclusive[o]
-}
-
-func (o Op) Exclusive() Op {
-	if !o.IsInclusive() {
-		return o
-	}
-
-	return exclusive[o]
 }
 
 func (o Op) Opposite() Op {
