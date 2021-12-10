@@ -70,8 +70,8 @@ func (d cursorEncoder) CursorDecode(input interface{}) (interface{}, error) {
 func New(o Options) driver.Driver {
 	for i := 0; i < len(o.Columns); i++ {
 		if o.Columns[i].Reference == nil {
-			o.Columns[i].Reference = func(column Column) string {
-				return column.Name
+			o.Columns[i].Reference = func(column Column) (string, []interface{}) {
+				return column.Name, nil
 			}
 		}
 
@@ -150,7 +150,7 @@ func (e sqlExecutor) GenerateCondition(typ cursor.Type, values map[string]interf
 	s := "@@@previous@@@"
 	origS := s
 
-	args := make([]interface{}, len(e.columns)*2)
+	argsa := make([][]interface{}, len(e.columns)*2)
 	for i := len(e.columns) - 1; i >= 0; i-- {
 		column := e.columns[i]
 
@@ -159,7 +159,7 @@ func (e sqlExecutor) GenerateCondition(typ cursor.Type, values map[string]interf
 			cop = cop.Opposite()
 		}
 
-		c := column.Reference(column)
+		c, vars := column.Reference(column)
 		v := values[column.Name]
 		vp := column.Placeholder(column)
 
@@ -167,10 +167,21 @@ func (e sqlExecutor) GenerateCondition(typ cursor.Type, values map[string]interf
 		// col op ? AND (col op ? OR (previous))
 		s = fmt.Sprintf("(%v %v %v AND (%v %v %v OR (%s)))", c, cop.Inclusive(), vp, c, cop, vp, s)
 
-		copy(args[i*2:], []interface{}{v, v})
+		args := make([]interface{}, 0)
+		args = append(args, vars...) // c
+		args = append(args, v)       // vp
+		args = append(args, vars...) // c
+		args = append(args, v)       // vp
+
+		copy(argsa[i*2:], [][]interface{}{args})
 	}
 
 	s = strings.Replace(s, fmt.Sprintf(" OR (%v)", origS), "", 1) // Remove the useless root previous
+
+	args := make([]interface{}, 0)
+	for _, a := range argsa {
+		args = append(args, a...)
+	}
 
 	return s, args
 }

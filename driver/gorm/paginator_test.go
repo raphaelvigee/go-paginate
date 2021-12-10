@@ -8,8 +8,10 @@ import (
 	"github.com/raphaelvigee/go-paginate/driver/sqlbase"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	gormdb "gorm.io/gorm"
+	"gorm.io/gorm/logger"
 	"os"
 	"strconv"
 	"testing"
@@ -23,7 +25,10 @@ type User struct {
 }
 
 func SetupDb(models ...interface{}) (*gormdb.DB, context.CancelFunc) {
-	db, err := gormdb.Open(sqlite.Open("file::memory:?cache=shared"), &gormdb.Config{NowFunc: time.Now().Local})
+	db, err := gormdb.Open(sqlite.Open("file::memory:?cache=shared"), &gormdb.Config{
+		Logger:  logger.Default.LogMode(logger.Info),
+		NowFunc: time.Now().Local,
+	})
 	if err != nil {
 		panic(fmt.Sprintf("Failed to connect to db: %v", err))
 	}
@@ -83,8 +88,8 @@ func placeholderValue(column sqlbase.Column) string {
 	return "datetime(?)"
 }
 
-func columnName(c sqlbase.Column) string {
-	return fmt.Sprintf("datetime(%v)", c.Name)
+func columnName(c sqlbase.Column) (string, []interface{}) {
+	return fmt.Sprintf("datetime(%v)", c.Name), nil
 }
 
 func printAll(tx *gormdb.DB) {
@@ -117,10 +122,10 @@ func testPaginator(t *testing.T, columns []sqlbase.Column, typ cursor.Type, limi
 	for i, s := range specs {
 		t.Logf("Spec %v\n", i)
 		csr, err := pg.Cursor(nextCursor, typ, limit)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		res, err := pg.Paginate(csr, tx)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		assert.Equal(t, s.hasPreviousPage, res.PageInfo.HasPreviousPage)
 		assert.Equal(t, s.hasNextPage, res.PageInfo.HasNextPage)
@@ -131,14 +136,14 @@ func testPaginator(t *testing.T, columns []sqlbase.Column, typ cursor.Type, limi
 		assert.Equal(t, ec, res.PageInfo.EndCursor)
 
 		c, err := res.Count()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, int64(len(s.names)), c)
 
 		var users []User
 		err = res.Query(&users)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		assert.Len(t, users, len(s.names))
+		require.Len(t, users, len(s.names))
 		for i, n := range s.names {
 			assert.Equal(t, n, users[i].Name)
 		}
@@ -170,10 +175,10 @@ func TestFactory_Empty(t *testing.T) {
 	})
 
 	csr, err := pg.Cursor("", cursor.After, 2)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	res, err := pg.Paginate(csr, tx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.False(t, res.PageInfo.HasPreviousPage)
 	assert.False(t, res.PageInfo.HasNextPage)
@@ -181,12 +186,12 @@ func TestFactory_Empty(t *testing.T) {
 	assert.Empty(t, res.PageInfo.EndCursor)
 
 	c, err := res.Count()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, int64(0), c)
 
 	var users []User
 	err = res.Query(&users)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, users, 0)
 }
@@ -233,6 +238,22 @@ var compositeColumns = []sqlbase.Column{
 	},
 }
 
+var compositeColumnsExpr = []sqlbase.Column{
+	{
+		Name:        "created_at",
+		Desc:        true,
+		Placeholder: placeholderValue,
+		Reference:   columnName,
+	},
+	{
+		Name: "something",
+		Desc: true,
+		Reference: func(column sqlbase.Column) (string, []interface{}) {
+			return "(id || ?)", []interface{}{"abc"}
+		},
+	},
+}
+
 func TestFactory_After_Composite(t *testing.T) {
 	testPaginator(t, compositeColumns, cursor.After, 2, []spec{
 		{
@@ -250,6 +271,21 @@ func TestFactory_After_Composite(t *testing.T) {
 
 func TestFactory_Before_Composite(t *testing.T) {
 	testPaginator(t, compositeColumns, cursor.Before, 2, []spec{
+		{
+			hasPreviousPage: false,
+			hasNextPage:     true,
+			names:           []string{"u3", "u1"},
+		},
+		{
+			hasPreviousPage: true,
+			hasNextPage:     false,
+			names:           []string{"u4", "u2"},
+		},
+	})
+}
+
+func TestFactory_Before_CompositeExpr(t *testing.T) {
+	testPaginator(t, compositeColumnsExpr, cursor.Before, 2, []spec{
 		{
 			hasPreviousPage: false,
 			hasNextPage:     true,

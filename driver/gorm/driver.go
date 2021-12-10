@@ -1,11 +1,13 @@
 package gorm
 
 import (
+	"context"
 	"fmt"
 	"github.com/raphaelvigee/go-paginate/driver"
 	"github.com/raphaelvigee/go-paginate/driver/base"
 	"github.com/raphaelvigee/go-paginate/driver/sqlbase"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Column = sqlbase.Column
@@ -19,16 +21,40 @@ func New(o Options) driver.Driver {
 		Columns: o.Columns,
 		ExecutorFactory: func(args sqlbase.ExecutorFactoryArgs) sqlbase.Executor {
 			otx := fork(args.Input.(*gorm.DB))
-			columnNames := make([]string, len(o.Columns))
+			orders := clause.Expr{}
+			selects := clause.Expr{}
 
-			for i, column := range o.Columns {
+			for _, column := range o.Columns {
 				order := column.Order(args.Cursor.Type)
 
-				otx = otx.Order(fmt.Sprintf("%v %v", column.Name, order))
-				columnNames[i] = column.Name
+				s, vars := column.Reference(column)
+
+				// Order
+				if orders.SQL != "" {
+					orders.SQL += ","
+				}
+				orders.SQL += fmt.Sprintf("%v %v", s, order)
+				orders.Vars = append(orders.Vars, vars...)
+
+				// Select
+				if selects.SQL != "" {
+					selects.SQL += ","
+				}
+				selects.SQL += s
+				if column.Name != s {
+					selects.SQL += " AS " + column.Name
+				}
+				selects.Vars = append(selects.Vars, vars...)
 			}
 
-			stx := fork(otx).Select(columnNames)
+			otx.Statement.AddClause(clause.OrderBy{
+				Expression: orders,
+			})
+
+			stx := fork(otx)
+			stx.Statement.AddClause(clause.Select{
+				Expression: selects,
+			})
 
 			return gormExecutor{
 				otx: otx,
@@ -97,5 +123,9 @@ func (p pageExecutor) Count() (int64, error) {
 }
 
 func fork(tx *gorm.DB) *gorm.DB {
-	return tx.Session(&gorm.Session{})
+	ctx := tx.Statement.Context
+	if ctx == nil { // Force stmt clone
+		ctx = context.Background()
+	}
+	return tx.Session(&gorm.Session{Context: ctx})
 }
