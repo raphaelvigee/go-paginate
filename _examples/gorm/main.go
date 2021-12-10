@@ -63,8 +63,8 @@ func main() {
 						return "datetime(?)"
 					},
 					// For SQLite the column name must be wrapped with `datetime()`
-					Reference: func(c gorm.Column) string {
-						return fmt.Sprintf("datetime(%v)", c.Name)
+					Reference: func(c gorm.Column) (string, []interface{}) {
+						return fmt.Sprintf("datetime(%v)", c.Name), nil
 					},
 				},
 			},
