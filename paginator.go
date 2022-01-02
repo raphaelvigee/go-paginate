@@ -17,11 +17,11 @@ type Page struct {
 	driver.Executor
 	PageInfo
 
-	cursorFunc func(i int64) (string, error)
+	CursorFunc func(i int64) (string, error)
 }
 
 func (p Page) Cursor(i int64) (string, error) {
-	return p.cursorFunc(i)
+	return p.CursorFunc(i)
 }
 
 type Options struct {
@@ -89,7 +89,7 @@ func (p *Paginator) Paginate(c cursor.Cursor, input interface{}) (Page, error) {
 			StartCursor:     string(sc),
 			EndCursor:       string(ec),
 		},
-		cursorFunc: func(i int64) (string, error) {
+		CursorFunc: func(i int64) (string, error) {
 			rc, err := dp.Cursor(i)
 			if err != nil {
 				return "", err
