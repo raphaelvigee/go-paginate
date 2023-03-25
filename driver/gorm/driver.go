@@ -1,6 +1,7 @@
 package gorm
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/raphaelvigee/go-paginate/driver"
@@ -24,24 +25,43 @@ func New(o Options) driver.Driver {
 			orders := clause.Expr{}
 			selects := clause.Expr{}
 
+			columnWrapper := func(col string) string {
+				var buf bytes.Buffer
+
+				if otx.Statement.Table != "" {
+					otx.Statement.DB.Dialector.QuoteTo(&buf, otx.Statement.Table)
+					buf.WriteByte('.')
+				}
+				otx.Statement.DB.Dialector.QuoteTo(&buf, col)
+
+				return buf.String()
+			}
+
 			for _, column := range o.Columns {
 				order := column.Order(args.Cursor.Type)
 
-				s, vars := column.Reference(column)
+				wc := Column{
+					Name:        columnWrapper(column.Name),
+					Desc:        column.Desc,
+					Reference:   column.Reference,
+					Placeholder: column.Placeholder,
+				}
+
+				col, vars := wc.Reference(wc)
 
 				// Order
 				if orders.SQL != "" {
 					orders.SQL += ","
 				}
-				orders.SQL += fmt.Sprintf("%v %v", s, order)
+				orders.SQL += fmt.Sprintf("%v %v", col, order)
 				orders.Vars = append(orders.Vars, vars...)
 
 				// Select
 				if selects.SQL != "" {
 					selects.SQL += ","
 				}
-				selects.SQL += s
-				if column.Name != s {
+				selects.SQL += col
+				if column.Name != col {
 					selects.SQL += " AS " + column.Name
 				}
 				selects.Vars = append(selects.Vars, vars...)
@@ -57,8 +77,9 @@ func New(o Options) driver.Driver {
 			})
 
 			return gormExecutor{
-				otx: otx,
-				stx: stx,
+				columnWrapper: columnWrapper,
+				otx:           otx,
+				stx:           stx,
 			}
 		},
 	})
@@ -68,7 +89,12 @@ type gormExecutor struct {
 	// Ordered transaction
 	otx *gorm.DB
 	// Ordered & selected transaction
-	stx *gorm.DB
+	stx           *gorm.DB
+	columnWrapper func(col string) string
+}
+
+func (d gormExecutor) WrapColumn(col string) string {
+	return d.columnWrapper(col)
 }
 
 func (d gormExecutor) TakeFirst() (map[string]interface{}, error) {

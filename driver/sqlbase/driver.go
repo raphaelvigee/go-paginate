@@ -11,6 +11,7 @@ import (
 )
 
 type Executor interface {
+	WrapColumn(c string) string
 	TakeFirst() (map[string]interface{}, error)
 	CountPrevious(where string, args []interface{}) (int64, error)
 	FindNext(query string, args []interface{}, limit int) ([]map[string]interface{}, error)
@@ -159,9 +160,16 @@ func (e sqlExecutor) GenerateCondition(typ cursor.Type, values map[string]interf
 			cop = cop.Opposite()
 		}
 
-		c, vars := column.Reference(column)
+		wc := Column{
+			Name:        e.executor.WrapColumn(column.Name),
+			Desc:        column.Desc,
+			Reference:   column.Reference,
+			Placeholder: column.Placeholder,
+		}
+
+		c, vars := wc.Reference(wc)
 		v := values[column.Name]
-		vp := column.Placeholder(column)
+		vp := wc.Placeholder(wc)
 
 		// https://stackoverflow.com/a/38017813
 		// col op ? AND (col op ? OR (previous))

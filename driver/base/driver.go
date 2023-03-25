@@ -2,6 +2,7 @@ package base
 
 import (
 	"errors"
+	"fmt"
 	"github.com/raphaelvigee/go-paginate/cursor"
 	"github.com/raphaelvigee/go-paginate/driver"
 )
@@ -36,6 +37,10 @@ func (d Driver) Paginate(c cursor.Cursor, input interface{}) (driver.Page, error
 		Cursor: c,
 	})
 	limit := c.Limit
+
+	if limit == 0 {
+		return nil, fmt.Errorf("limit is 0")
+	}
 
 	cvalue := c.Value
 	isFirst := cvalue == nil
